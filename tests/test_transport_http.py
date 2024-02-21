@@ -23,7 +23,7 @@ Implemented using the 'pytest' testing framework.
 """
 
 if __name__ == "__main__":
-    import __init__
+    from . import __init__
     __init__.runUsingPyTest(globals())
 
 
@@ -36,7 +36,7 @@ import pytest
 
 import base64
 import sys
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 
 
 class MyException(Exception):
@@ -195,6 +195,10 @@ def test_sending_unicode_data(monkeypatch):
         @callOnce
         def readline(self, *args, **kwargs):
             raise MyException
+        def close(self):
+            self.closed = True
+        def flush(self):
+            self.flushed = True
 
     class MockSocket:
         def __init__(self, mocker):
@@ -213,6 +217,10 @@ def test_sending_unicode_data(monkeypatch):
         def settimeout(self, *args, **kwargs):
             assert not hasattr(self, "settimeout_called")
             self.settimeout_called = True
+        def close(self):
+            self.closed = True
+        def setsockopt(*opt):
+            pass
 
     host = "an-easily-recognizable-host-name-214894932"
     port = 9999
@@ -222,7 +230,7 @@ def test_sending_unicode_data(monkeypatch):
     url = "http://%s:%s/svc" % (host, port)
     store = suds.store.DocumentStore(wsdl=_wsdl_with_input_data(url))
     client = suds.client.Client("suds://wsdl", cache=None, documentStore=store)
-    data = u"Дмитровский район"
+    data = "Дмитровский район"
     pytest.raises(MyException, client.service.f, data)
     assert data.encode("utf-8") in mocker.sentData
 
@@ -237,7 +245,7 @@ def test_sending_non_ascii_location():
     class MockURLOpener:
         def open(self, request, timeout=None):
             raise MyException
-    url = u"http://Дмитровский-район-152312306:9999/svc"
+    url = "http://Дмитровский-район-152312306:9999/svc"
     transport = suds.transport.http.HttpTransport()
     transport.urlopener = MockURLOpener()
     store = suds.store.DocumentStore(wsdl=_wsdl_with_no_input_data(url))
@@ -331,7 +339,7 @@ def _wsdl_with_input_data(url):
     Externally specified URL is used as the web service location.
 
     """
-    return suds.byte_str(u"""\
+    return suds.byte_str("""\
 <?xml version="1.0" encoding="utf-8"?>
 <wsdl:definitions targetNamespace="myNamespace"
   xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
@@ -375,7 +383,7 @@ def _wsdl_with_no_input_data(url):
     the web service location.
 
     """
-    return suds.byte_str(u"""\
+    return suds.byte_str("""\
 <?xml version="1.0" encoding="utf-8"?>
 <wsdl:definitions targetNamespace="myNamespace"
   xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
